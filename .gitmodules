@@ -1,0 +1,6 @@
+[submodule "third-party/spdk"]
+	path = third-party/spdk
+	url = https://github.com/jiengup/spdk
+[submodule "third-party/brpc"]
+	path = third-party/brpc
+	url = https://github.com/apache/brpc

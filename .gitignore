@@ -1,2 +1,8 @@
 # build files
 build
+
+# third-party
+third-party/*
+
+# CMake files
+.cache

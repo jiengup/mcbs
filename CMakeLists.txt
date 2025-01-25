@@ -7,9 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 message("compiler is ${CMAKE_CXX_COMPILER_ID} and name is ${CMAKE_CXX_COMPILER}")
 
-set(CMAKE_BINARY_DIR "${CMAKE_SOURCE_DIR}/bin")
-set(CMAKE_LIB_DIR "${CMAKE_SOURCE_DIR}/lib")
-set(EXECUTABLE_OUTPUT_PATH "${CMAKE_BINARY_DIR}")
+set(EXECUTABLE_OUTPUT_PATH "${CMAKE_BINARY_DIR}/bin")
 set(LIBRARY_OUTPUT_PATH "${CMAKE_LIB_DIR}")
 
 # Default to debug
@@ -17,14 +15,12 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Debug")
 endif()
 # Set flags
-set(BUILD_FLAGS -Wall -Wextra -Werror)
+set(BUILD_FLAGS -Wall -Wextra -Werror -std=c++11)
 if (CMAKE_BUILD_TYPE MATCHES Debug)
-    message("Building SZD in Debug mode")
     list(APPEND BUILD_FLAGS -g2 -ggdb -O0)
     set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 endif()
 if (CMAKE_BUILD_TYPE MATCHES Release)
-    message("Building SZD in Release mode")
     list(APPEND BUILD_FLAGS -O3)
 endif()
 option(FSANITIZE "Turn on fsanitize" OFF)
@@ -40,7 +36,77 @@ if (FSANITIZE)
     message("fsanitize is turned on")
 endif()
 
-# Sets up SPDK
-# include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/FindSPDK.cmake")
-list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
-find_package(BRPC)
+
+# -----------------------third-party---------------------
+include(ExternalProject)
+
+set(BRPC_INSTALL_DIR ${CMAKE_BINARY_DIR}/brpc)
+ExternalProject_Add(
+    BRPC
+    SOURCE_DIR ${CMAKE_SOURCE_DIR}/third-party/brpc
+    CMAKE_ARGS
+        -DCMAKE_INSTALL_PREFIX=${BRPC_INSTALL_DIR}
+        -DCMAKE_BUILD_TYPE=Release
+)
+
+set(SPDK_INSTALL_DIR ${CMAKE_BINARY_DIR}/spdk)
+set(SPDK_SOURCE_DIR ${CMAKE_SOURCE_DIR}/third-party/spdk)
+set(SPDK_MAKE cd ${SPDK_SOURCE_DIR} && make -j)
+set(SPDK_INSTALL cd ${SPDK_SOURCE_DIR} && make install)
+ExternalProject_Add(
+    SPDK
+    SOURCE_DIR ${CMAKE_SOURCE_DIR}/third-party/spdk
+    CONFIGURE_COMMAND <SOURCE_DIR>/configure --prefix=${SPDK_INSTALL_DIR} --enable-debug
+    BUILD_COMMAND ${SPDK_MAKE}
+    INSTALL_COMMAND ${SPDK_INSTALL}
+)
+
+# -----------------------PROTOBUF-----------------------
+include(FindThreads)
+include(FindProtobuf)
+protobuf_generate_cpp(PROTO_SRC PROTO_HEADER protobuf/echo.proto)
+include_directories(${CMAKE_CURRENT_BINARY_DIR})
+
+
+# -----------------------BRPC---------------------------
+set(CMAKE_PREFIX_PATH ${BRPC_INSTALL_DIR})
+set(BRPC_INCLUDE_PATH ${BRPC_INSTALL_DIR}/include)
+set(BRPC_LIB ${BRPC_INSTALL_DIR}/lib/libbrpc.a)
+include_directories(${BRPC_INCLUDE_PATH})
+
+find_path(GFLAGS_INCLUDE_PATH gflags/gflags.h)
+find_library(GFLAGS_LIBRARY NAMES gflags libgflags)
+if((NOT GFLAGS_INCLUDE_PATH) OR (NOT GFLAGS_LIBRARY))
+    message(FATAL_ERROR "Fail to find gflags")
+endif()
+include_directories(${GFLAGS_INCLUDE_PATH})
+
+find_package(OpenSSL)
+include_directories(${OPENSSL_INCLUDE_DIR})
+
+find_path(LEVELDB_INCLUDE_PATH NAMES leveldb/db.h)
+find_library(LEVELDB_LIB NAMES leveldb)
+if ((NOT LEVELDB_INCLUDE_PATH) OR (NOT LEVELDB_LIB))
+    message(FATAL_ERROR "Fail to find leveldb")
+endif()
+include_directories(${LEVELDB_INCLUDE_PATH})
+
+set(BRPC_DYNAMIC_LIB
+    ${CMAKE_THREAD_LIBS_INIT}
+    ${GFLAGS_LIBRARY}
+    ${PROTOBUF_LIBRARIES}
+    ${LEVELDB_LIB}
+    ${OPENSSL_CRYPTO_LIBRARY}
+    ${OPENSSL_SSL_LIBRARY}
+    dl
+)
+
+
+
+add_executable(echo_client src/client.cpp ${PROTO_SRC} ${PROTO_HEADER})
+add_executable(echo_server src/server.cpp ${PROTO_SRC} ${PROTO_HEADER})
+add_dependencies(echo_client BRPC SPDK)
+add_dependencies(echo_server BRPC SPDK)
+
+target_link_libraries(echo_client ${BRPC_LIB} ${BRPC_DYNAMIC_LIB})
+target_link_libraries(echo_server ${BRPC_LIB} ${BRPC_DYNAMIC_LIB})

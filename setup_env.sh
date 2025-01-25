@@ -22,3 +22,17 @@ else
   echo "Error: third_party/spdk not found"
   exit 1
 fi
+
+: ${NVME_DEV:=""}
+
+if [ -n "$NVME_DEV" ]; then
+  echo "Initializing NVMe disk..."
+  sudo apt-get install nvme-cli
+  sudo nvme format --reset -b 4096 "${NVME_DEV}n1"
+  nvme format $NVME_DEV --namespace-id=1 --lbaf=4 --reset
+fi
+
+: ${PCI_ALLOWED:=""}
+if [ -n "$PCI_ALLOWED" ]; then
+  sudo PCI_ALLOWED=$PCI_ALLOWED ./third_party/spdk/scripts/setup.sh
+fi

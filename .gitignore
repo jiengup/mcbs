@@ -6,3 +6,6 @@ third-party/*
 
 # CMake files
 .cache
+
+# vscode
+.vscode

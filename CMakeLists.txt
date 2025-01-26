@@ -60,11 +60,13 @@ ExternalProject_Add(
     BUILD_COMMAND ${SPDK_MAKE}
     INSTALL_COMMAND ${SPDK_INSTALL}
 )
+# TODO(xgj): fixme
 
 # -----------------------PROTOBUF-----------------------
 include(FindThreads)
 include(FindProtobuf)
-protobuf_generate_cpp(PROTO_SRC PROTO_HEADER protobuf/echo.proto)
+protobuf_generate_cpp(ECHO_PROTO_SRC PROTO_HEADER src/protobuf/echo.proto)
+protobuf_generate_cpp(IO_PROTO_SRC PROTO_HEADER src/protobuf/io.proto)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 
@@ -100,13 +102,15 @@ set(BRPC_DYNAMIC_LIB
     ${OPENSSL_SSL_LIBRARY}
     dl
 )
+# ------------------Internal Files---------------------------
+include_directories(${CMAKE_SOURCE_DIR}/src/include)
+file(GLOB MCBS_SRC_FILES ${CMAKE_SOURCE_DIR}/src/*.cc)
 
+# ------------------Targets----------------------------------
+add_executable(client_tgt app/client_tgt.cc ${ECHO_PROTO_SRC} ${ECHO_PROTO_HEADER} ${MCBS_SRC_FILES})
+add_executable(server_tgt app/server_tgt.cc ${IO_PROTO_SRC} ${IO_PROTO_HEADER} ${MCBS_SRC_FILES})
+add_dependencies(client_tgt BRPC SPDK)
+add_dependencies(server_tgt BRPC SPDK)
 
-
-add_executable(echo_client src/client.cpp ${PROTO_SRC} ${PROTO_HEADER})
-add_executable(echo_server src/server.cpp ${PROTO_SRC} ${PROTO_HEADER})
-add_dependencies(echo_client BRPC SPDK)
-add_dependencies(echo_server BRPC SPDK)
-
-target_link_libraries(echo_client ${BRPC_LIB} ${BRPC_DYNAMIC_LIB})
-target_link_libraries(echo_server ${BRPC_LIB} ${BRPC_DYNAMIC_LIB})
+target_link_libraries(client_tgt ${BRPC_LIB} ${BRPC_DYNAMIC_LIB})
+target_link_libraries(server_tgt ${BRPC_LIB} ${BRPC_DYNAMIC_LIB})

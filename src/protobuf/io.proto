@@ -1,0 +1,35 @@
+syntax="proto2";
+
+package mcbs;
+
+option cc_generic_services = true;
+
+message EchoRequest {
+    required string messgae = 1;
+};
+
+message EchoRespose {
+    required string message = 1;
+};
+
+service EchoService {
+    rpc Echo(EchoRequest) returns (EchoRespose);
+};
+
+message WriteIORequest {
+    required uint32 uid = 1;
+    required uint64 offset = 2;
+    required uint64 size = 3;
+    required bool with_attachment = 4;
+    optional bytes data = 5;
+}
+
+message WriteIOResponse {
+    required int32 internal_retcode = 1;
+    required uint32 uid = 2;
+}
+
+service WriteIOService {
+    rpc Write(WriteIORequest) returns (WriteIOResponse);
+    rpc AsyncWrite(WriteIORequest) returns (WriteIOResponse);
+};

@@ -107,7 +107,7 @@ include_directories(${CMAKE_SOURCE_DIR}/src/include)
 file(GLOB MCBS_SRC_FILES ${CMAKE_SOURCE_DIR}/src/*.cc)
 
 # ------------------Targets----------------------------------
-add_executable(client_tgt app/client_tgt.cc ${ECHO_PROTO_SRC} ${ECHO_PROTO_HEADER} ${MCBS_SRC_FILES})
+add_executable(client_tgt app/client_tgt.cc ${IO_PROTO_SRC} ${IO_PROTO_HEADER} ${MCBS_SRC_FILES})
 add_executable(server_tgt app/server_tgt.cc ${IO_PROTO_SRC} ${IO_PROTO_HEADER} ${MCBS_SRC_FILES})
 add_dependencies(client_tgt BRPC SPDK)
 add_dependencies(server_tgt BRPC SPDK)

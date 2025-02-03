@@ -6,6 +6,7 @@ set -e
 git submodule update --init --recursive
 sudo apt-get update
 sudo apt-get install -y nvme-cli
+sudo apt-get install clang
 sudo apt-get install -y git g++ make cmake \
                         libssl-dev libgflags-dev \
                         libprotobuf-dev libprotoc-dev \
@@ -30,4 +31,21 @@ fi
 : ${PCI_ALLOWED:=""}
 if [ -n "$PCI_ALLOWED" ]; then
   sudo PCI_ALLOWED=$PCI_ALLOWED ./third_party/spdk/scripts/setup.sh
+fi
+
+: ${VSCODE_INIT:=""}
+if [ -n "$VSCODE_INIT" ]; then
+  code --install-extension ms-vscode.cpptools 
+  code --install-extension llvm-vs-code-extensions.vscode-clangd 
+  code --install-extension ms-vscode.cmake-tools
+  code --install-extension GitHub.copilot
+  code --install-extension GitHub.copilot-chat
+
+  mkdir -p .vscode
+
+  if [ ! -f .vscode/settings.json ]; then
+      echo '{"cmake.generator": "Unix Makefiles"}' > .vscode/settings.json
+  else
+      jq '. + {"cmake.generator": "Unix Makefiles"}' .vscode/settings.json > temp.json && mv temp.json .vscode/settings.json
+  fi
 fi

@@ -11,6 +11,7 @@ struct ClientOption {
   uint32_t max_retry;
   uint32_t write_depth;
   uint32_t id;
+  uint32_t thread_num;
   bool with_attachment = false;
   brpc::ChannelOptions ch_option;
 };
@@ -45,6 +46,8 @@ private:
   uint32_t id_;
   uint64_t log_id_;
   uint32_t write_depth_;
+  uint32_t thread_num_;
+  std::vector<bthread_t> sender_bths_;
   bool with_attachment_;
   char *user_data_;
   brpc::Channel channel_;

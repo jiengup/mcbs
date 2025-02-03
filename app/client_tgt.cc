@@ -3,6 +3,7 @@
 
 DEFINE_int32(id, -1, "Client user ID number");
 DEFINE_bool(with_attachment, false, "Sent data with attachment or byte field in protobuf");
+DEFINE_uint32(thread_num, 1, "Number of threads to send requests");
 DEFINE_string(server, "0.0.0.0:8000", "IP Address of server");
 DEFINE_int32(max_retry, 0, "Max retries(not including the first RPC)"); 
 
@@ -16,7 +17,8 @@ int main(int argc, char* argv[]) {
     option.id = FLAGS_id;
     option.server = FLAGS_server;
     option.max_retry = FLAGS_max_retry;
-    option.with_attachment = 
+    option.with_attachment = FLAGS_with_attachment;
+    option.thread_num = FLAGS_thread_num;
     option.ch_option.max_retry = FLAGS_max_retry;
 
     auto *client = mcbs::Client::GetInstance();

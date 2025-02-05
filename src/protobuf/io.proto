@@ -27,6 +27,7 @@ message WriteIORequest {
 message WriteIOResponse {
     required int32 internal_retcode = 1;
     required uint32 uid = 2;
+    required uint64 written_size = 3;
 }
 
 service WriteIOService {

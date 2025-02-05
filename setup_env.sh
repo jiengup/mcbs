@@ -6,7 +6,7 @@ set -e
 git submodule update --init --recursive
 sudo apt-get update
 sudo apt-get install -y nvme-cli
-sudo apt-get install clang
+sudo apt-get install -y clang
 sudo apt-get install -y git g++ make cmake \
                         libssl-dev libgflags-dev \
                         libprotobuf-dev libprotoc-dev \
@@ -20,7 +20,6 @@ else
 fi
 
 : ${NVME_DEV:=""}
-
 if [ -n "$NVME_DEV" ]; then
   echo "Initializing NVMe disk..."
   sudo apt-get install nvme-cli

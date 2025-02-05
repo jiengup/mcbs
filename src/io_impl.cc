@@ -16,6 +16,11 @@ void WriteIOServiceImpl::Write(google::protobuf::RpcController *cntl_base,
             << "latency: " << cntl->latency_us() * 1.0 / 1000 << "ms";
   response->set_internal_retcode(0);
   response->set_uid(request->uid());
+
+  usleep(30000);
+
+  // TODO(xgj): set proper written size
+  response->set_written_size(request->size());
 }
 
 void WriteIOServiceImpl::AsyncWrite(google::protobuf::RpcController *cntl_base,
@@ -32,5 +37,10 @@ void WriteIOServiceImpl::AsyncWrite(google::protobuf::RpcController *cntl_base,
             << request->offset();
   response->set_internal_retcode(0);
   response->set_uid(request->uid());
+
+  usleep(30000);
+
+  // TODO(xgj): set proper written size
+  response->set_written_size(request->size());
 }
 } // namespace mcbs

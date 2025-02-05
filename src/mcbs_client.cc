@@ -35,6 +35,9 @@ ReturnCode Client::Init(const ClientOption &option) {
   write_depth_ = option.write_depth;
   with_attachment_ = option.with_attachment;
   tolarance_latency_ = option.tolarance_latency;
+  thread_num_ = option.thread_num;
+
+  async_senders_.resize(thread_num_);
 
   if (bthread_sem_init(&async_sem_, write_depth_)) {
     LOG(ERROR) << "Fail to initialize async semaphore";
@@ -94,6 +97,7 @@ ReturnCode Client::WriteRequest(const uint64_t offset, const uint64_t size,
 
   stat_->total_request << 1;
   stat_->total_traffic << size;
+  stat_->inflight_request << 1;
 
   stub_->Write(&cntl, &request, &response, nullptr);
   if (cntl.Failed()) {
@@ -140,6 +144,7 @@ ReturnCode Client::AsyncWriteRequest(const uint64_t offset, const uint64_t size,
 
   stat_->total_request << 1;
   stat_->total_traffic << size;
+  stat_->inflight_request << 1;
 
   stub_->AsyncWrite(
       cntl, &request, response,
@@ -152,6 +157,7 @@ void Client::AsyncWriteDone(brpc::Controller *cntl, WriteIOResponse *response) {
   std::unique_ptr<WriteIOResponse> response_guard(response);
 
   bthread_sem_post(&async_sem_);
+  stat_->inflight_request << -1;
 
   if (cntl->Failed()) {
     stat_->error_request << 1;
@@ -189,12 +195,16 @@ void Client::SimulateReplay(const bool is_async) {
     }
   } else {
     LOG(INFO) << "User" << id_ << "Start to simulate replay in async mode";
-    if (bthread_start_background(&async_sender_, nullptr,
-                                 simulation_async_sender, this) != 0) {
-      LOG(ERROR) << "Fail to start async sender";
-      return;
+    for (auto &async_sender_ : async_senders_) {
+      if (bthread_start_background(&async_sender_, nullptr,
+                                  simulation_async_sender, this) != 0) {
+        LOG(ERROR) << "Fail to start async sender";
+        return;
+      }
     }
-    bthread_join(async_sender_, nullptr);
+    for (auto const &async_sender_ : async_senders_) {
+      bthread_join(async_sender_, nullptr);
+    }
   }
   bthread_join(stat_printer_, nullptr);
 }

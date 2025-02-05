@@ -14,6 +14,7 @@ struct ClientOption {
   uint32_t max_retry;
   uint32_t write_depth;
   uint32_t id;
+  uint32_t thread_num;
   uint64_t tolarance_latency;
   bool with_attachment = false;
   brpc::ChannelOptions ch_option;
@@ -55,8 +56,12 @@ class Client {
   uint32_t id_;
   uint64_t log_id_;
   uint32_t write_depth_;
-  bthread_t async_sender_;
+
+  uint32_t thread_num_;
+  std::vector<bthread_t> async_senders_;
+  // control the number of inflight requests
   bthread_sem_t async_sem_;
+
   bool with_attachment_;
   char *user_data_;
   brpc::Channel channel_;

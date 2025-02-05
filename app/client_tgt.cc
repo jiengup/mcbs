@@ -11,6 +11,7 @@ DEFINE_int32(timeout_ms, 500, "Timeout of a single RPC request.");
 DEFINE_bool(is_async, false, "Send requests asynchronously");
 DEFINE_bool(is_simulation, true, "Simulate replay");
 DEFINE_uint64(tolarance_latency, 50000, "Tolarance latency in microseconds");
+DEFINE_uint32(thread_num, 1, "Number of Bthreads to send requests");
 
 int main(int argc, char* argv[]) {
     GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);

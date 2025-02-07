@@ -1,10 +1,16 @@
-# Override to use different location for SPDK.
-if(DEFINED ENV{SPDK_DIR})
-    set(SPDK_DIR "$ENV{SPDK_DIR}")
-else()
-    set(SPDK_DIR "${CMAKE_CURRENT_SOURCE_DIR}/dependencies/spdk")
-endif()
-message("looking for SPDK in ${SPDK_DIR}")
+include(ExternalProject)
+
+set(SPDK_INSTALL_DIR ${CMAKE_BINARY_DIR}/spdk)
+set(SPDK_SOURCE_DIR ${CMAKE_SOURCE_DIR}/third-party/spdk)
+set(SPDK_MAKE cd ${SPDK_SOURCE_DIR} && make -j)
+set(SPDK_INSTALL cd ${SPDK_SOURCE_DIR} && make install)
+ExternalProject_Add(
+    SPDK
+    SOURCE_DIR ${CMAKE_SOURCE_DIR}/third-party/spdk
+    CONFIGURE_COMMAND <SOURCE_DIR>/configure --prefix=${SPDK_INSTALL_DIR} --enable-debug
+    BUILD_COMMAND ${SPDK_MAKE}
+    INSTALL_COMMAND ${SPDK_INSTALL}
+)
 
 find_package(PkgConfig REQUIRED)
 if(NOT PKG_CONFIG_FOUND)
@@ -12,13 +18,12 @@ if(NOT PKG_CONFIG_FOUND)
 endif()
 
 # Needed to ensure that PKG_CONFIG also looks at our SPDK installation.
-set(ENV{PKG_CONFIG_PATH} "$ENV{PKG_CONFIG_PATH}:${SPDK_DIR}/build/lib/pkgconfig/")
+set(ENV{PKG_CONFIG_PATH} "$ENV{PKG_CONFIG_PATH}:${SPDK_INSTALL_DIR}/lib/pkgconfig/")
 message("Looking for SPDK packages...")
-pkg_search_module(SPDK REQUIRED IMPORTED_TARGET spdk_nvme)
+pkg_search_module(SPDK_FTL REQUIRED IMPORTED_TARGET spdk_ftl)
 pkg_search_module(DPDK REQUIRED IMPORTED_TARGET spdk_env_dpdk)
-# pkg_search_module(SYS REQUIRED IMPORTED_TARGET spdk_syslibs)
 
-if(SPDK_FOUND)
+if(SPDK_FTL_FOUND)
     message(STATUS "SPDK found")
     message(STATUS "Include dirs: ${SPDK_INCLUDE_DIRS}")
     message(STATUS "Libraries: ${SPDK_LIBRARIES}")
@@ -34,51 +39,15 @@ else()
     message(FATAL_ERROR "DPDK not found")
 endif()
 
-execute_process(
-    COMMAND pkg-config --libs --static spdk_syslibs
-    OUTPUT_VARIABLE PKG_CONFIG_OUTPUT
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-)
-
-message(STATUS "pkg-config output: ${PKG_CONFIG_OUTPUT}")
-
-string(REPLACE " " ";" SYS_STATIC_LIBRARIES "${PKG_CONFIG_OUTPUT}")
-
-message(STATUS "SYS_STATIC_LIBRARIES: ${SYS_STATIC_LIBRARIES}")
-
-# TODO: Solve this once there is one sane CMake for SPDK somewhere
-# The following is what is done in the wiki of SPDK, but does not work as of 2022-11-09.
-# It will use a shared lib, not what we want! It uses wrong files in both sections and wrong types (static vs linked).
-# set(SPDK_AND_DPDK_LIBRARIES "${SPDK_LINK_LIBRARIES}" "${DPDK_LINK_LIBRARIES}")
-# list(REMOVE_DUPLICATES SPDK_AND_DPDK_LIBRARIES)
-# set(SPDK_LIBRARY_DEPENDENCIES 
-#     -Wl,--whole-archive
-#     "${SPDK_AND_DPDK_LIBRARIES}"
-#     -Wl,--no-whole-archive
-#     "${SYS_STATIC_LIBRARIES}" 
-# )
-
-# Fix libs.
-#   issue 1: many libs erroneously point to .so, but must be .a
-#   issue 2: duplicates in DPDK and SPDK libs
-#   issue 3: spdk_env_dpdk needs to be whole-archive, unlike the other DPDK deps...
-#   issue 4: there is no SYS_STATIC_LINK_LIBRARIES, so we need a quick and dirty solution for now to get isa-l
-list(TRANSFORM SPDK_LINK_LIBRARIES REPLACE "[.]so$" ".a")
-list(TRANSFORM DPDK_LINK_LIBRARIES REPLACE "[.]so$" ".a")
-set(SPDK_ENV_DPDK_VAR "") 
-foreach(DPDK_LIB ${DPDK_LINK_LIBRARIES})
-    if(DPDK_LIB MATCHES ".*spdk_env_dpdk.*")
-        set(SPDK_ENV_DPDK_VAR "${DPDK_LIB}") 
-    endif()
-endforeach()
-list(APPEND SPDK_LINK_LIBRARIES "${SPDK_ENV_DPDK_VAR}")
-list(REMOVE_ITEM DPDK_LINK_LIBRARIES "${SPDK_ENV_DPDK_VAR}" ${SPDK_LINK_LIBRARIES})
-# list(TRANSFORM SYS_STATIC_LIBRARIES REPLACE "isal" "${SYS_STATIC_LIBRARY_DIRS}/libisal.a")
-
-set(SPDK_LIBRARY_DEPENDENCIES 
+set(SPDK_STATIC_LIB
     -Wl,--whole-archive
     "${SPDK_LINK_LIBRARIES}"
     -Wl,--no-whole-archive
     "${DPDK_LINK_LIBRARIES}" 
     "${SYS_STATIC_LIBRARIES}" 
 )
+
+set(SPDK_INCLUDE_DIRS
+    "${SPDK_FTL_INCLUDE_DIRS}"
+)
+include_directories(${SPDK_INCLUDE_DIRS})

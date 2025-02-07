@@ -6,7 +6,7 @@ set -e
 git submodule update --init --recursive
 sudo apt-get update
 sudo apt-get install -y nvme-cli
-sudo apt-get install -y clang
+sudo apt-get install -y clang clangd
 sudo apt-get install -y git g++ make cmake \
                         libssl-dev libgflags-dev \
                         libprotobuf-dev libprotoc-dev \

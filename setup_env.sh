@@ -26,16 +26,14 @@ fi
 : ${NVME_DEV:=""}
 if [ -n "$NVME_DEV" ]; then
   echo "Initializing NVMe disk..."
-  sudo apt-get install nvme-cli
   sudo nvme format --force --reset -b 4096 "${NVME_DEV}n1"
   sudo nvme format $NVME_DEV --force --namespace-id=1 --lbaf=4 --reset
 fi
 
-# r6525: 0000:c1:00.0
 : ${PCI_ALLOWED:=""}
-: $
+: ${HUGEMEM:=""}
 if [ -n "$PCI_ALLOWED" ]; then
-  sudo HUGEMEM=131072 PCI_ALLOWED=$PCI_ALLOWED ./third_party/spdk/scripts/setup.sh
+  sudo HUGEMEM=$HUGEMEM PCI_ALLOWED=$PCI_ALLOWED ./third-party/spdk/scripts/setup.sh
 fi
 
 : ${VSCODE_INIT:=""}

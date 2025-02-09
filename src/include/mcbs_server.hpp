@@ -5,6 +5,7 @@
 namespace mcbs {
 struct ServerOption {
     uint32_t port;
+    std::string spdk_config_file;
     brpc::ServerOptions brpcs_options;
 };
 
@@ -14,7 +15,8 @@ class Server {
         static Server instance;
         return &instance;
     }
-    void Start(const ServerOption& option);
+    void Init(const ServerOption& option);
+    void Start();
     protected:
     Server();
     virtual ~Server();
@@ -26,5 +28,6 @@ class Server {
 
     brpc::Server server_;
     WriteIOServiceImpl write_io_service_impl_;
+    ServerOption option_;
 };
 } // namespace mcbs

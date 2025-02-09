@@ -47,15 +47,18 @@ protobuf_generate_cpp(ECHO_PROTO_SRC PROTO_HEADER src/protobuf/echo.proto)
 protobuf_generate_cpp(IO_PROTO_SRC PROTO_HEADER src/protobuf/io.proto)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
-# ------------------Internal Files---------------------------
-include_directories(${CMAKE_SOURCE_DIR}/src/include)
+# ------------------MCBS LIBRARY---------------------------
 file(GLOB MCBS_SRC_FILES ${CMAKE_SOURCE_DIR}/src/*.cc)
+add_library(mcbs_lib STATIC ${MCBS_SRC_FILES} ${IO_PROTO_SRC} ${IO_PROTO_HEADER})
+target_include_directories(mcbs_lib PUBLIC ${CMAKE_SOURCE_DIR}/src/include)
+target_include_directories(mcbs_lib PUBLIC ${SPDK_INCLUDE_DIRS})
+target_link_libraries(mcbs_lib PRIVATE ${BRPC_LIB} ${BRPC_DYNAMIC_LIB} ${SPDK_STATIC_LIB})
+add_dependencies(mcbs_lib BRPC)
 
 # ------------------Targets----------------------------------
-add_executable(client_tgt app/client_tgt.cc ${IO_PROTO_SRC} ${IO_PROTO_HEADER} ${MCBS_SRC_FILES})
-add_executable(server_tgt app/server_tgt.cc ${IO_PROTO_SRC} ${IO_PROTO_HEADER} ${MCBS_SRC_FILES})
-add_dependencies(client_tgt BRPC)
-add_dependencies(server_tgt BRPC)
+add_executable(client_tgt app/client_tgt.cc)
+add_executable(server_tgt app/server_tgt.cc)
 
-target_link_libraries(client_tgt ${BRPC_LIB} ${BRPC_DYNAMIC_LIB})
-target_link_libraries(server_tgt ${BRPC_LIB} ${BRPC_DYNAMIC_LIB} ${SPDK_STATIC_LIB})
+target_link_libraries(client_tgt PRIVATE mcbs_lib)
+target_link_libraries(server_tgt PRIVATE mcbs_lib ${SPDK_STATIC_LIB})
+target_include_directories(server_tgt PUBLIC ${SPDK_INCLUDE_DIRS})

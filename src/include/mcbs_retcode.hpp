@@ -6,7 +6,9 @@ enum ReturnCode {
   InitError = -1,
   OOM = -2,
   IOError = -3,
-  BdevNotFound = -4
+  BdevNotFound = -4,
+  IOChannelError = -5,
+  StoreEngineError = -6
 };
 
 inline std::string ReturnCodeToString(int code) {
@@ -26,6 +28,10 @@ inline std::string ReturnCodeToString(ReturnCode code) {
       return "IOError";
     case BdevNotFound:
       return "BdevNotFound";
+    case IOChannelError:
+      return "IOChannelError";
+    case StoreEngineError:
+      return "StoreEngineError";
     default:
       return "Unknown";
   }

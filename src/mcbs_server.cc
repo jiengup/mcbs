@@ -3,11 +3,13 @@
 #include <spdk/event.h>
 
 #include <mcbs_server.hpp>
+#include <memory>
 
 #include "butil/logging.h"
 #include "butil/macros.h"
 
 namespace mcbs {
+
 static void bdev_open_event_cb(enum spdk_bdev_event_type type,
                                struct spdk_bdev* bdev, void* event_ctx) {}
 
@@ -15,20 +17,20 @@ static void spdk_app_start_cb(void* ctx) {
   LOG(INFO) << "SPDK application started";
 
   auto server = static_cast<Server*>(ctx);
-
-  for (auto const& bdev_name : server->GetSPDKBdevNames()) {
-    LOG(INFO) << "Getting SPDK bdev : " << bdev_name;
-    auto bdev_desc = server->GetSPDKBdevDescByName(bdev_name);
-    CHECK(bdev_desc == nullptr);
+  // Must called here
+  for (const auto& bdev_name : server->GetSPDKBdevNames()) {
+    spdk_bdev_desc* bdev_desc;
     if (spdk_bdev_open_ext(bdev_name.c_str(), true, bdev_open_event_cb, nullptr,
                            &bdev_desc) != 0) {
-      LOG(ERROR) << "Fail to open SPDK bdev : " << bdev_name;
-      spdk_app_stop(BdevNotFound);
+      LOG(ERROR) << "Fail to open SPDK bdev: " << bdev_name;
+      return;
     }
-
-    server->SetSpdkBdevDesc(bdev_name, bdev_desc);
+    auto rc = server->StartStoreEngine(bdev_name, bdev_desc);
+    if (rc != Success) {
+      LOG(ERROR) << "Fail to start store engine: " << bdev_name;
+      return;
+    }
   }
-
   server->SetSPDKStarted(true);
 }
 
@@ -51,7 +53,8 @@ static void* spdk_starter(void* arg) {
       spdk_app_start(&spdk_opts, spdk_app_start_cb, static_cast<void*>(server));
 
   if (rc) {
-    LOG(ERROR) << "Fail to start SPDK application: " << ReturnCodeToString(rc);
+    LOG(ERROR) << "SPDK application quit with error: "
+               << ReturnCodeToString(rc);
     return nullptr;
   }
 
@@ -66,9 +69,6 @@ Server::Server() {
 }
 
 void Server::CleanSPDKEnv() {
-  for (auto const& bdev_desc : spdk_bdev_descs_) {
-    spdk_bdev_close(bdev_desc.second);
-  }
   spdk_app_stop(0);
   bthread_join(spdk_app_thread_, nullptr);
   spdk_app_fini();
@@ -77,6 +77,12 @@ void Server::CleanSPDKEnv() {
 }
 
 Server::~Server() {
+  for (auto& it : store_engines_) {
+    if (it.second) {
+      it.second.reset();
+    }
+    store_engines_.erase(it.first);
+  }
   CleanSPDKEnv();
   CHECK(IsSPDKStarted() == true) << "SPDK is still running";
   server_.Stop(0);
@@ -90,7 +96,6 @@ ReturnCode Server::Init(const ServerOption& option) {
   std::string item_name;
   while (std::getline(names_ss, item_name, ',')) {
     spdk_bdev_names_.push_back(item_name);
-    SetSpdkBdevDesc(item_name, nullptr);
   }
 
   if (bthread_start_background(&spdk_app_thread_, nullptr, spdk_starter,
@@ -101,6 +106,25 @@ ReturnCode Server::Init(const ServerOption& option) {
 
   while (!IsSPDKStarted()) {
     usleep(100);
+  }
+
+  for (const auto& name : spdk_bdev_names_) {
+  }
+
+  return Success;
+}
+
+ReturnCode Server::StartStoreEngine(const std::string& bdev_name,
+                                    spdk_bdev_desc* bdev_desc) {
+  CHECK(store_engines_.find(bdev_name) == store_engines_.end())
+      << "Duplicate store engine: " << bdev_name;
+
+  store_engines_[bdev_name] =
+      std::unique_ptr<StoreEngine>(new StoreEngine(bdev_name, bdev_desc));
+
+  if (!store_engines_[bdev_name]->IsReady()) {
+    LOG(ERROR) << "Fail to start store engine: " << bdev_name;
+    return StoreEngineError;
   }
 
   return Success;

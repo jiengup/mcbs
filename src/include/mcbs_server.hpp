@@ -4,6 +4,7 @@
 
 #include <cstdint>
 #include <mcbs_retcode.hpp>
+#include <mcbs_store_engine.hpp>
 
 #include "io_impl.hpp"
 
@@ -27,12 +28,9 @@ class Server {
   inline std::vector<std::string> GetSPDKBdevNames() const {
     return spdk_bdev_names_;
   }
-  inline void SetSpdkBdevDesc(const std::string& bdev_name, spdk_bdev_desc* bdev_desc) {
-    spdk_bdev_descs_[bdev_name] = bdev_desc;
-  }
-  inline spdk_bdev_desc* GetSPDKBdevDescByName(const std::string& bdev_name) {
-    return spdk_bdev_descs_[bdev_name];
-  }
+
+  ReturnCode StartStoreEngine(const std::string& bdev_name,
+                              spdk_bdev_desc* bdev_desc);
 
   void Start();
   bool IsSPDKStarted() const { return spdk_started_; }
@@ -49,15 +47,14 @@ class Server {
   Server(Server&&) = delete;
   Server operator=(Server&&) = delete;
 
-
+  ServerOption option_;
   brpc::Server server_;
   WriteIOServiceImpl write_io_service_impl_;
-  ServerOption option_;
 
+  std::vector<std::string> spdk_bdev_names_;
   bthread_t spdk_app_thread_;
   bool spdk_started_ = false;
 
-  std::vector<std::string> spdk_bdev_names_;
-  std::map<std::string, spdk_bdev_desc*> spdk_bdev_descs_;
+  std::map<std::string, std::unique_ptr<StoreEngine> > store_engines_;
 };
 }  // namespace mcbs

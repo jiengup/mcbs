@@ -4,8 +4,10 @@
 
 DEFINE_int32(port, 8000, "TCP Port of this server");
 DEFINE_string(spdk_json_config_file,
-              "/users/guntherX/mcbs/spdk-config/8_tiny_ftls.json",
+              "/users/guntherX/mcbs/spdk-config/2_tiny_ftls.json",
               "SPDK JSON config file");
+DEFINE_string(bdev_names, "ftl0,ftl1",
+              "SPDK bdev names used as storage unit, split by comma");
 
 int main(int argc, char* argv[]) {
   // Parse gflags. We recommend you to use gflags as well.
@@ -14,9 +16,14 @@ int main(int argc, char* argv[]) {
   mcbs::ServerOption option;
   option.port = FLAGS_port;
   option.spdk_config_file = FLAGS_spdk_json_config_file;
+  option.bdev_names = FLAGS_bdev_names;
   auto* server = mcbs::Server::GetInstance();
 
-  server->Init(option);
+  if (server->Init(option) != mcbs::Success) {
+    LOG(ERROR) << "Fail to init server";
+    return -1;
+  }
+
   server->Start();
 
   return 0;

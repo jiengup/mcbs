@@ -180,7 +180,7 @@ void Client::AsyncWriteDone(brpc::Controller *cntl, WriteIOResponse *response) {
 void Client::SimulateReplay(const bool is_async) {
   CHECK(IsInit());
 
-  if (bthread_start_urgent(&stat_printer_, nullptr, stat_printer, this) != 0) {
+  if (bthread_start_background(&stat_printer_, nullptr, stat_printer, this) != 0) {
     LOG(ERROR) << "Fail to start stat printer";
     return;
   }

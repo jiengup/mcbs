@@ -13,18 +13,27 @@ sudo apt-get install -y git g++ make cmake \
                         protobuf-compiler libleveldb-dev 
 
 if [ -d "third-party/spdk" ]; then
-  sudo ./third-party/spdk/scripts/pkgdep.sh
-  pushd third-party/spdk
-  ./configure --enable-debug
-  make -j
-  popd
+  echo "Found SPDK"
+  sudo ./third-party/spdk/scripts/setup.sh reset
 else
   echo "Error: third-party/spdk not found"
   exit 1
 fi
 
+if [ -d "third-party/spdk" ] && [ ! -d "third-party/spdk/build" ]; then
+  sudo ./third-party/spdk/scripts/pkgdep.sh
+  pushd third-party/spdk
+  ./configure --enable-debug
+  make -j
+  popd
+fi
+
 : ${NVME_DEV:=""}
 if [ -n "$NVME_DEV" ]; then
+  while [ ! -e "${NVME_DEV}n1" ]; do
+    echo "${NVME_DEV}n1 not found. Waiting..."
+    sleep 1
+  done
   echo "Initializing NVMe disk..."
   sudo nvme format --force --reset -b 4096 "${NVME_DEV}n1"
   sudo nvme format $NVME_DEV --force --namespace-id=1 --lbaf=4 --reset
@@ -33,7 +42,7 @@ fi
 : ${PCI_ALLOWED:=""}
 : ${HUGEMEM:=""}
 if [ -n "$PCI_ALLOWED" ]; then
-  sudo HUGEMEM=$HUGEMEM PCI_ALLOWED=$PCI_ALLOWED ./third-party/spdk/scripts/setup.sh
+  sudo HUGEMEM=$HUGEMEM PCI_ALLOWED=$PCI_ALLOWED ./third-party/spdk/scripts/setup.sh || true
 fi
 
 : ${VSCODE_INIT:=""}

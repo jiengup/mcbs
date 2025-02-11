@@ -37,21 +37,26 @@ class ClientStat {
   void ShowStat() const {
     LOG(INFO) << "\n"
               << name << "\n"
-              << "[REQUESTS]" << "\n"
+              << "[REQUESTS]"
+              << "\n"
               << "Total request:" << total_request << "\n"
               << "Error request:" << error_request << "\n"
               << "Good request:" << good_request << "\n"
-              << "[TRAFFIC]" << "\n"
+              << "[TRAFFIC]"
+              << "\n"
               << "Total traffic:" << total_traffic.get_value() / MiB << "MiB"
               << "\n"
               << "Good traffic:" << good_traffic.get_value() / MiB << "MiB"
               << "\n"
-              << "[BANDWIDTH]" << "\n"
+              << "[BANDWIDTH]"
+              << "\n"
               << "Total bandwidth:" << total_bandwidth.get_value() / MiB
-              << "MiB" << "\n"
+              << "MiB"
+              << "\n"
               << "Good bandwidth:" << good_bandwidth.get_value() / MiB << "MiB"
               << "\n"
-              << "[LATENCY]" << "\n"
+              << "[LATENCY]"
+              << "\n"
               << "Latency:" << latency_recorder.latency(1) << "\n"
               << "QPS:" << latency_recorder.qps(1)
               << "Inflight request:" << inflight_request;
@@ -61,7 +66,38 @@ class ClientStat {
   std::string name;
 };
 
-class ServerStat {
+// class ServerStat {
+//  public:
+//   bvar::Adder<uint64_t> total_requests;
+//   bvar::Adder<uint64_t> success_requests;
+//   bvar::Adder<uint64_t> failed_requsts;
+
+//   bvar::Adder<uint64_t> total_traffic;
+//   bvar::Adder<uint64_t> success_traffic;
+//   bvar::Adder<uint64_t> failed_traffic;
+
+//   bvar::PerSecond<bvar::Adder<uint64_t> > total_bandwidth;
+//   bvar::PerSecond<bvar::Adder<uint64_t> > success_bandwidth;
+//   bvar::PerSecond<bvar::Adder<uint64_t> > success_IOPS;
+
+//   ServerStat(std::string name)
+//       : name(name),
+//         total_requests("mcbs", name + "total_requests"),
+//         success_requests("mcbs", name + "success_requests"),
+//         failed_requsts("mcbs", name + "failed_requsts"),
+//         total_traffic("mcbs", name + "total_traffic"),
+//         success_traffic("mcbs", name + "success_traffic"),
+//         failed_traffic("mcbs", name + "failed_traffic"),
+//         total_bandwidth("mcbs", name + "total_bandwidth", &total_traffic, 1),
+//         success_bandwidth("mcbs", name + "success_bandwidth", &success_traffic,
+//                           1),
+//         success_IOPS("mcbs", name + "success_IOPS", &success_requests) {}
+
+//  private:
+//   std::string name;
+// };
+
+class StoreEngineStat {
  public:
   bvar::Adder<uint64_t> total_requests;
   bvar::Adder<uint64_t> success_requests;
@@ -73,16 +109,22 @@ class ServerStat {
 
   bvar::PerSecond<bvar::Adder<uint64_t> > total_bandwidth;
   bvar::PerSecond<bvar::Adder<uint64_t> > success_bandwidth;
+  bvar::PerSecond<bvar::Adder<uint64_t> > success_IOPS;
 
-  ServerStat(std::string name)
-      : total_requests("mcbs", name + "total_requests"),
-        success_requests("mcbs", name + "success_requests"),
-        failed_requsts("mcbs", name + "failed_requsts"),
-        total_traffic("mcbs", name + "total_traffic"),
-        success_traffic("mcbs", name + "success_traffic"),
-        failed_traffic("mcbs", name + "failed_traffic"),
-        total_bandwidth("mcbs", name + "total_bandwidth", &total_traffic, 1),
-        success_bandwidth("mcbs", name + "success_bandwidth", &success_traffic,
-                          1) {}
+  StoreEngineStat(std::string name)
+  : name(name),
+    total_requests("mcbs", name + "total_requests"),
+    success_requests("mcbs", name + "success_requests"),
+    failed_requsts("mcbs", name + "failed_requsts"),
+    total_traffic("mcbs", name + "total_traffic"),
+    success_traffic("mcbs", name + "success_traffic"),
+    failed_traffic("mcbs", name + "failed_traffic"),
+    total_bandwidth("mcbs", name + "total_bandwidth", &total_traffic, 1),
+    success_bandwidth("mcbs", name + "success_bandwidth", &success_traffic,
+                      1),
+    success_IOPS("mcbs", name + "success_IOPS", &success_requests) {}
+
+private:
+std::string name;
 };
 }  // namespace mcbs

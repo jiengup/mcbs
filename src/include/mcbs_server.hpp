@@ -1,9 +1,9 @@
 #include <brpc/server.h>
 #include <bthread/bthread.h>
 #include <spdk/bdev_module.h>
+#include <spdk/ftl.h>
 
 #include <cstdint>
-#include <mcbs_retcode.hpp>
 #include <mcbs_store_engine.hpp>
 
 #include "io_impl.hpp"
@@ -14,6 +14,13 @@ struct ServerOption {
   std::string spdk_config_file;
   std::string bdev_names;
   brpc::ServerOptions brpcs_options;
+};
+
+struct AsyncWriteContext {
+  const WriteIORequest* request;
+  WriteIOResponse* response;
+  brpc::Controller *cntl;
+  google::protobuf::Closure* done;
 };
 
 class Server {
@@ -29,13 +36,17 @@ class Server {
     return spdk_bdev_names_;
   }
 
-  ReturnCode StartStoreEngine(const std::string& bdev_name,
-                              spdk_bdev_desc* bdev_desc);
+  ReturnCode StartStoreEngine(const std::string& name, spdk_ftl_dev* bdev_desc);
 
   void Start();
   bool IsSPDKStarted() const { return spdk_started_; }
   void SetSPDKStarted(bool flag) { spdk_started_ = flag; }
   void CleanSPDKEnv();
+  size_t GetStoreEngineIndex(uint32_t uid) const {
+    // TODO(xgj): add methods
+    return uid % store_engines_.size();
+  }
+  ReturnCode WriteRequest(AsyncWriteContext* ctx);
 
  protected:
   Server();
@@ -56,5 +67,6 @@ class Server {
   bool spdk_started_ = false;
 
   std::map<std::string, std::unique_ptr<StoreEngine> > store_engines_;
+  std::map<uint, std::string> store_engine_id_map_;
 };
 }  // namespace mcbs

@@ -4,9 +4,9 @@
 
 DEFINE_int32(port, 8000, "TCP Port of this server");
 DEFINE_string(spdk_json_config_file,
-              "/users/guntherX/mcbs/spdk-config/2_tiny_ftls.json",
+              "/users/guntherX/mcbs/spdk-config/nvme_split.json",
               "SPDK JSON config file");
-DEFINE_string(bdev_names, "ftl0,ftl1",
+DEFINE_string(bdev_names, "nvme0p0,nvme0p1,",
               "SPDK bdev names used as storage unit, split by comma");
 
 int main(int argc, char* argv[]) {

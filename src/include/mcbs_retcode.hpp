@@ -8,7 +8,9 @@ enum ReturnCode {
   IOError = -3,
   BdevNotFound = -4,
   IOChannelError = -5,
-  StoreEngineError = -6
+  StoreEngineWriteError = -6,
+  StoreEngineStartError = -7,
+  BdevIOOOB = -8,
 };
 
 inline std::string ReturnCodeToString(int code) {
@@ -21,17 +23,21 @@ inline std::string ReturnCodeToString(ReturnCode code) {
     case Success:
       return "Success";
     case InitError:
-      return "InitError";
+      return "Init Error";
     case OOM:
-      return "OOM";
+      return "Out of Memory";
     case IOError:
-      return "IOError";
+      return "IO Error";
     case BdevNotFound:
-      return "BdevNotFound";
+      return "Bdev Not Found";
     case IOChannelError:
-      return "IOChannelError";
-    case StoreEngineError:
-      return "StoreEngineError";
+      return "IO Channel Error";
+    case StoreEngineWriteError:
+      return "Store Engine Write Error";
+    case StoreEngineStartError:
+      return "Store Engine Start Error";
+    case BdevIOOOB:
+      return "Bdev IO out of bound";
     default:
       return "Unknown";
   }

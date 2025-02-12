@@ -11,7 +11,7 @@ static void *simulation_async_sender(void *arg) {
   uint64_t offset = 0;
   uint64_t size = 4096;
   while (!brpc::IsAskedToQuit()) {
-    auto rc = client->AsyncWriteRequest(offset, size, true);
+    auto rc = client->AsyncWriteRequest(offset, size, client->WithAttachment());
     CHECK(rc == Success);
   }
   return nullptr;

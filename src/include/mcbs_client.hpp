@@ -36,6 +36,7 @@ class Client {
                           const bool with_attachment = false);
   ReturnCode AsyncWriteRequest(const uint64_t offset, const uint64_t size,
                                const bool with_attachment = false);
+  bool WithAttachment() const { return with_attachment_; }
   void ShowStat();
 
   void Stop();

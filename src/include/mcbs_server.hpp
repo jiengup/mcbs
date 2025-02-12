@@ -1,7 +1,6 @@
 #include <brpc/server.h>
 #include <bthread/bthread.h>
 #include <spdk/bdev_module.h>
-#include <spdk/ftl.h>
 
 #include <cstdint>
 #include <mcbs_store_engine.hpp>
@@ -13,6 +12,7 @@ struct ServerOption {
   uint32_t port;
   std::string spdk_config_file;
   std::string bdev_names;
+  std::string ftl_algo;
   brpc::ServerOptions brpcs_options;
 };
 
@@ -36,7 +36,7 @@ class Server {
     return spdk_bdev_names_;
   }
 
-  ReturnCode StartStoreEngine(const std::string& name, spdk_ftl_dev* bdev_desc);
+  ReturnCode StartStoreEngine(const std::string& name, spdk_ftl_dev* ftl_dev);
 
   void Start();
   bool IsSPDKStarted() const { return spdk_started_; }

@@ -108,7 +108,7 @@
           "method": "bdev_split_create",
           "params": {
             "base_bdev": "nvme0n1",
-            "split_count": 64,
+            "split_count": 32,
             "split_size_mb": 0
           }
         },
@@ -168,7 +168,7 @@
           "params": {
             "name": "nvme0",
             "trtype": "PCIe",
-            "traddr": "0000:c1:00.0",
+            "traddr": "10000:01:00.0",
             "prchk_reftag": false,
             "prchk_guard": false,
             "ctrlr_loss_timeout_sec": 0,

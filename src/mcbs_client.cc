@@ -14,14 +14,13 @@ static void *simulation_async_sender(void *arg) {
     auto rc = client->AsyncWriteRequest(offset, size, true);
     CHECK(rc == Success);
   }
-  bthread_usleep(50000);
   return nullptr;
 }
 
 static void *stat_printer(void *arg) {
   auto client = static_cast<Client *>(arg);
   while (!brpc::IsAskedToQuit()) {
-    client->ShowStat();
+    // client->ShowStat();
     sleep(1);
   }
   return nullptr;

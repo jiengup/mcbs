@@ -14,11 +14,6 @@ enum ReturnCode {
 };
 
 inline std::string ReturnCodeToString(int code) {
-  ReturnCode rc = static_cast<ReturnCode>(code);
-  return ReturnCodeToString(rc);
-}
-
-inline std::string ReturnCodeToString(ReturnCode code) {
   switch (code) {
     case Success:
       return "Success";
@@ -41,5 +36,9 @@ inline std::string ReturnCodeToString(ReturnCode code) {
     default:
       return "Unknown";
   }
+}
+
+inline std::string ReturnCodeToString(ReturnCode code) {
+  return ReturnCodeToString(static_cast<int>(code));
 }
 }  // namespace mcbs

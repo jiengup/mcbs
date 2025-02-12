@@ -13,7 +13,7 @@ void WriteIOServiceImpl::Write(google::protobuf::RpcController *cntl_base,
   LOG(DEBUG) << "Received request[log_id=" << cntl->log_id() << "] from "
             << cntl->remote_side() << " to " << cntl->local_side() << ": "
             << request->uid() << " " << request->offset() << " "
-            << request->offset()
+            << request->size()
             << "latency: " << cntl->latency_us() * 1.0 / 1000 << "ms";
   response->set_internal_retcode(0);
   response->set_uid(request->uid());

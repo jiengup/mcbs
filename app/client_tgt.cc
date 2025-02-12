@@ -26,13 +26,14 @@ int main(int argc, char* argv[]) {
     option.with_attachment = FLAGS_with_attachment;
     option.write_depth = FLAGS_write_depth;
     option.tolarance_latency = FLAGS_tolarance_latency;
+    option.thread_num = FLAGS_thread_num;
 
     option.ch_option.max_retry = FLAGS_max_retry;
     option.ch_option.timeout_ms = FLAGS_timeout_ms;
 
     auto *client = mcbs::Client::GetInstance();
     if (client->Init(option) != mcbs::Success) {
-        LOG(ERROR) << "Fail to initialize client";
+        LOG(ERROR) << "Fail to initiamlize client";
         return -1;
     }
 

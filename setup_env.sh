@@ -5,6 +5,7 @@ set -e
 
 git submodule update --init --recursive
 sudo apt-get update
+sudo apt-get install -y jq
 sudo apt-get install -y nvme-cli
 sudo apt-get install -y clang clangd
 sudo apt-get install -y git g++ make cmake \
@@ -36,6 +37,10 @@ if [ -n "$NVME_DEV" ]; then
   done
   echo "Initializing NVMe disk..."
   sudo nvme format --force --reset -b 4096 "${NVME_DEV}n1"
+fi
+
+: ${NVME_MD_FORMAT:=""}
+if [ -n "$NVME_MD_FORMAT" ] && [ -n "${NVME_DEV}" ]; then
   sudo nvme format $NVME_DEV --force --namespace-id=1 --lbaf=4 --reset
 fi
 

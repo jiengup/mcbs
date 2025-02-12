@@ -1,4 +1,5 @@
 #include <spdk/event.h>
+#include <spdk/bdev_module.h>
 
 #include <mcbs_server.hpp>
 #include <memory>
@@ -8,28 +9,6 @@
 #include "butil/macros.h"
 
 namespace mcbs {
-struct bpao_init_context {
-  Server* server;
-  std::string bpao_engine_name;
-};
-
-static void bpao_init_cb(struct spdk_ftl_dev* dev, void* cb_arg, int status) {
-  auto ctx_guard = std::unique_ptr<bpao_init_context>(
-      static_cast<bpao_init_context*>(cb_arg));
-  auto server = ctx_guard->server;
-  auto store_eng_name = ctx_guard->bpao_engine_name;
-  if (status) {
-    LOG(ERROR) << "Fail to init FTL device";
-    spdk_app_stop(StoreEngineStartError);
-    return;
-  }
-
-  if (server->StartStoreEngine(store_eng_name, dev) != Success) {
-    LOG(ERROR) << "Fail to start store engine: " << store_eng_name;
-    spdk_app_stop(StoreEngineStartError);
-    return;
-  }
-}
 
 static void spdk_app_start_cb(void* ctx) {
   LOG(INFO) << "SPDK application started";
@@ -37,14 +16,17 @@ static void spdk_app_start_cb(void* ctx) {
   auto server = static_cast<Server*>(ctx);
   // Must called here
   for (const auto& bdev_name : server->GetSPDKBdevNames()) {
+    auto bdev = spdk_bdev_get_by_name(bdev_name.c_str());
+    if (!bdev) {
+      LOG(ERROR) << "Fail to find bdev: " << bdev_name;
+      spdk_app_stop(BdevNotFound);
+      return;
+    }
+    auto fdev = reinterpret_cast<char*>(bdev->ctxt);
+    auto ftl_dev = *reinterpret_cast<spdk_ftl_dev**>(fdev + sizeof(spdk_bdev));
     auto store_eng_name = "bpao_over_" + bdev_name;
-    spdk_ftl_conf conf;
-    conf.name = const_cast<char*>(store_eng_name.c_str());
-    conf.cache_bdev = const_cast<char*>(bdev_name.c_str());
-    conf.mode |= SPDK_FTL_MODE_CREATE;
-    auto init_ctx = new bpao_init_context{server, store_eng_name};
-    if (spdk_ftl_dev_init(&conf, bpao_init_cb, ctx)) {
-      LOG(ERROR) << "Fail to init FTL device: " << store_eng_name;
+    if (server->StartStoreEngine(store_eng_name, ftl_dev) != Success) {
+      LOG(ERROR) << "Fail to start store engine: " << store_eng_name;
       spdk_app_stop(StoreEngineStartError);
       return;
     }
@@ -144,9 +126,10 @@ ReturnCode Server::Init(const ServerOption& option) {
     return InitError;
   }
 
-  while (!IsSPDKStarted()) {
-    usleep(100);
-  }
+  // TODO: what if spdk_app_stop is called before SPDK is started?
+  // while (!IsSPDKStarted()) {
+  //   usleep(100);
+  // }
 
   return Success;
 }

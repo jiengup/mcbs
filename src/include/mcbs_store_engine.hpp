@@ -6,6 +6,7 @@
 #include <string>
 
 namespace mcbs {
+
 class StoreEngine {
  public:
   StoreEngine() = delete;

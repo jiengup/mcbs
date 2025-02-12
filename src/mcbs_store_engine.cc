@@ -6,10 +6,14 @@
 #include "butil/macros.h"
 #include "spdk/bdev.h"
 
+
 namespace mcbs {
+
+using ftl_io_ptr = ftl_io*;
+
 struct ftl_write_context {
   StoreEngine *store_engine;
-  ftl_io *ftl_io;
+  ftl_io_ptr ftl_io;
   iovec *iov;
   struct {
     void (*cb)(void *);

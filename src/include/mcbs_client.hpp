@@ -3,6 +3,9 @@
 #include <mcbs_retcode.hpp>
 #include <mcbs_stat.hpp>
 
+#include "bthread/mutex.h"
+#include "bthread/types.h"
+#include "butil/time.h"
 #include "io.pb.h"
 
 #define MiB (1024 * 1024)
@@ -36,7 +39,11 @@ class Client {
                           const bool with_attachment = false);
   ReturnCode AsyncWriteRequest(const uint64_t offset, const uint64_t size,
                                const bool with_attachment = false);
+  uint64_t GetSimulateOffset();
+  void RecordTraffic(const uint64_t reqcnt, const uint64_t offset);
   bool WithAttachment() const { return with_attachment_; }
+  uint64_t GetIOPS() const { return stat_->latency_recorder.qps(); }
+  // void Increase
   void ShowStat();
 
   void Stop();
@@ -51,7 +58,7 @@ class Client {
   Client(Client &&) = delete;
   Client operator=(Client &&) = delete;
 
-  void AsyncWriteDone(brpc::Controller *cntl, WriteIOResponse *response);
+  void AsyncWriteDone(brpc::Controller *cntl, WriteIORequest *request, WriteIOResponse *response);
 
   bool is_init = false;
   uint32_t id_;
@@ -71,5 +78,19 @@ class Client {
 
   ClientStat *stat_;
   bthread_t stat_printer_;
+
+  bthread_mutex_t simulate_offset_mutex_;
+  uint64_t simulate_offset_;
+
+  bthread_mutex_t traffic_recorder_mutex_;
+  uint64_t acc_iops_ = 0;
+  uint64_t acc_bandwidth_ = 0;
+  butil::Timer record_timer_;
+
+  uint64_t iops_ = 0;
+  uint64_t bandwidth_ = 0;
+
+  bthread_mutex_t inflight_request_mutex_;
+  uint64_t inflight_request_ = 0;
 };
 };  // namespace mcbs

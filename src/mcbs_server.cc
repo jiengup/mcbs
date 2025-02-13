@@ -1,5 +1,5 @@
-#include <spdk/event.h>
 #include <spdk/bdev_module.h>
+#include <spdk/event.h>
 
 #include <mcbs_server.hpp>
 #include <memory>
@@ -7,8 +7,12 @@
 #include "brpc/closure_guard.h"
 #include "butil/logging.h"
 #include "butil/macros.h"
+#include "spdk/bdev.h"
 
 namespace mcbs {
+
+static void spdk_bdev_event_cb(spdk_bdev_event_type type,
+                               struct spdk_bdev* bdev, void* event_ctx) {}
 
 static void spdk_app_start_cb(void* ctx) {
   LOG(INFO) << "SPDK application started";
@@ -17,15 +21,28 @@ static void spdk_app_start_cb(void* ctx) {
   // Must called here
   for (const auto& bdev_name : server->GetSPDKBdevNames()) {
     auto bdev = spdk_bdev_get_by_name(bdev_name.c_str());
+    spdk_bdev_desc* ftl_bdev_desc;
+
+    spdk_bdev_open_ext(bdev_name.c_str(), true, spdk_bdev_event_cb, nullptr,
+                       &ftl_bdev_desc);
+
     if (!bdev) {
       LOG(ERROR) << "Fail to find bdev: " << bdev_name;
       spdk_app_stop(BdevNotFound);
       return;
     }
+
+    if (!ftl_bdev_desc) {
+      LOG(ERROR) << "Fail to open bdev: " << bdev_name;
+      spdk_app_stop(BdevNotFound);
+      return;
+    }
+
     auto fdev = reinterpret_cast<char*>(bdev->ctxt);
     auto ftl_dev = *reinterpret_cast<spdk_ftl_dev**>(fdev + sizeof(spdk_bdev));
     auto store_eng_name = "bpao_over_" + bdev_name;
-    if (server->StartStoreEngine(store_eng_name, ftl_dev) != Success) {
+    if (server->StartStoreEngine(store_eng_name, ftl_dev, ftl_bdev_desc) !=
+        Success) {
       LOG(ERROR) << "Fail to start store engine: " << store_eng_name;
       spdk_app_stop(StoreEngineStartError);
       return;
@@ -34,7 +51,7 @@ static void spdk_app_start_cb(void* ctx) {
   server->SetSPDKStarted(true);
 }
 
-static void async_write_cb(void *ctx) {
+static void async_write_cb(void* ctx) {
   auto async_ctx = static_cast<AsyncWriteContext*>(ctx);
   auto request = async_ctx->request;
   auto response = async_ctx->response;
@@ -108,7 +125,6 @@ Server::~Server() {
   CHECK(IsSPDKStarted() == true) << "SPDK is still running";
   server_.Stop(0);
   server_.Join();
-
 }
 
 ReturnCode Server::Init(const ServerOption& option) {
@@ -135,12 +151,13 @@ ReturnCode Server::Init(const ServerOption& option) {
 }
 
 ReturnCode Server::StartStoreEngine(const std::string& name,
-                                    spdk_ftl_dev* ftl_dev) {
+                                    spdk_ftl_dev* ftl_dev,
+                                    spdk_bdev_desc* bdev_desc) {
   CHECK(store_engines_.find(name) == store_engines_.end())
       << "Duplicate store engine: " << name;
 
   store_engines_[name] =
-      std::unique_ptr<StoreEngine>(new StoreEngine(name, ftl_dev));
+      std::unique_ptr<StoreEngine>(new StoreEngine(name, ftl_dev, bdev_desc));
 
   if (!store_engines_[name]->IsReady()) {
     LOG(ERROR) << "Fail to start store engine: " << name;
@@ -170,11 +187,11 @@ ReturnCode Server::WriteRequest(AsyncWriteContext* ctx) {
     rc = store_engine->WriteBlocks(
         (void*)cntl->request_attachment().to_string().c_str(),
         request->offset(), request->size() / store_engine->GetBlockSize(),
-        nullptr, ctx);
+        async_write_cb, ctx);
   } else {
     rc = store_engine->WriteBlocks(
         const_cast<char*>(request->data().c_str()), request->offset(),
-        request->size() / store_engine->GetBlockSize(), nullptr, ctx);
+        request->size() / store_engine->GetBlockSize(), async_write_cb, ctx);
   }
 
   if (rc) {

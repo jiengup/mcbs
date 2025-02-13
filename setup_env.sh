@@ -29,6 +29,11 @@ if [ -d "third-party/spdk" ] && [ ! -d "third-party/spdk/build" ]; then
   popd
 fi
 
+if [ ! -e "/usr/bin/gdb-ori" ]; then
+  sudo mv /usr/bin/gdb /usr/bin/gdb-ori
+  sudo cp ./third-party/gdb/gdb /usr/bin/gdb
+fi
+
 : ${NVME_DEV:=""}
 if [ -n "$NVME_DEV" ]; then
   while [ ! -e "${NVME_DEV}n1" ]; do

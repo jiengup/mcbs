@@ -4,13 +4,14 @@
 #include <mcbs_retcode.hpp>
 #include <mcbs_stat.hpp>
 #include <string>
+#include "spdk/accel.h"
 
 namespace mcbs {
 
 class StoreEngine {
  public:
   StoreEngine() = delete;
-  StoreEngine(const std::string &name, spdk_ftl_dev *bdev_desc);
+  StoreEngine(const std::string &name, spdk_ftl_dev *ftl_bdev, spdk_bdev_desc *bdev_desc);
   virtual ~StoreEngine();
 
   inline bool IsReady() const {
@@ -33,6 +34,8 @@ class StoreEngine {
   std::string engine_name_;
   spdk_ftl_dev *ftl_dev_;
   spdk_io_channel *io_channel_;
+  spdk_bdev_desc *bdev_desc_;
+  spdk_io_channel *bdev_io_channel_;
 
   uint64_t block_size_;
   uint64_t num_blocks_;

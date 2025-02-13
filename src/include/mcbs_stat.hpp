@@ -58,7 +58,7 @@ class ClientStat {
               << "[LATENCY]"
               << "\n"
               << "Latency:" << latency_recorder.latency(1) << "\n"
-              << "QPS:" << latency_recorder.qps(1)
+              << "QPS:" << latency_recorder.qps(1) << "\n"
               << "Inflight request:" << inflight_request;
   }
 
@@ -89,7 +89,8 @@ class ClientStat {
 //         success_traffic("mcbs", name + "success_traffic"),
 //         failed_traffic("mcbs", name + "failed_traffic"),
 //         total_bandwidth("mcbs", name + "total_bandwidth", &total_traffic, 1),
-//         success_bandwidth("mcbs", name + "success_bandwidth", &success_traffic,
+//         success_bandwidth("mcbs", name + "success_bandwidth",
+//         &success_traffic,
 //                           1),
 //         success_IOPS("mcbs", name + "success_IOPS", &success_requests) {}
 
@@ -112,19 +113,19 @@ class StoreEngineStat {
   bvar::PerSecond<bvar::Adder<uint64_t> > success_IOPS;
 
   StoreEngineStat(std::string name)
-  : name(name),
-    total_requests("mcbs", name + "total_requests"),
-    success_requests("mcbs", name + "success_requests"),
-    failed_requsts("mcbs", name + "failed_requsts"),
-    total_traffic("mcbs", name + "total_traffic"),
-    success_traffic("mcbs", name + "success_traffic"),
-    failed_traffic("mcbs", name + "failed_traffic"),
-    total_bandwidth("mcbs", name + "total_bandwidth", &total_traffic, 1),
-    success_bandwidth("mcbs", name + "success_bandwidth", &success_traffic,
-                      1),
-    success_IOPS("mcbs", name + "success_IOPS", &success_requests) {}
+      : name(name),
+        total_requests("mcbs", name + "total_requests"),
+        success_requests("mcbs", name + "success_requests"),
+        failed_requsts("mcbs", name + "failed_requsts"),
+        total_traffic("mcbs", name + "total_traffic"),
+        success_traffic("mcbs", name + "success_traffic"),
+        failed_traffic("mcbs", name + "failed_traffic"),
+        total_bandwidth("mcbs", name + "total_bandwidth", &total_traffic, 1),
+        success_bandwidth("mcbs", name + "success_bandwidth", &success_traffic,
+                          1),
+        success_IOPS("mcbs", name + "success_IOPS", &success_requests) {}
 
-private:
-std::string name;
+ private:
+  std::string name;
 };
 }  // namespace mcbs

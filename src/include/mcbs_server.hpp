@@ -36,7 +36,7 @@ class Server {
     return spdk_bdev_names_;
   }
 
-  ReturnCode StartStoreEngine(const std::string& name, spdk_ftl_dev* ftl_dev);
+  ReturnCode StartStoreEngine(const std::string& name, spdk_ftl_dev* ftl_dev, spdk_bdev_desc *desc);
 
   void Start();
   bool IsSPDKStarted() const { return spdk_started_; }

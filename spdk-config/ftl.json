@@ -105,14 +105,6 @@
           }
         },
         {
-          "method": "bdev_split_create",
-          "params": {
-            "base_bdev": "nvme0n1",
-            "split_count": 64,
-            "split_size_mb": 0
-          }
-        },
-        {
           "method": "bdev_raid_set_options",
           "params": {
             "process_window_size_kb": 1024
@@ -184,6 +176,19 @@
           "params": {
             "period_us": 100000,
             "enable": false
+          }
+        },
+        {
+          "method": "bdev_ftl_create",
+          "params": {
+            "name": "ftl0",
+            "overprovisioning": 20,
+            "l2p_dram_limit": 2048,
+            "group_num": 1,
+            "algo": "single_group_greedy",
+            "uuid": "00000000-0000-0000-0000-000000000000",
+            "fast_shutdown": false,
+            "cache": "nvme0n1"
           }
         },
         {

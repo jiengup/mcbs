@@ -54,6 +54,7 @@ void WriteIOServiceImpl::AsyncWrite(google::protobuf::RpcController *cntl_base,
 
   async_write_context->response = response;
   async_write_context->request = request;
+  async_write_context->cntl = cntl;
   async_write_context->done = done;
   
   auto server = Server::GetInstance();

@@ -8,10 +8,25 @@ namespace mcbs {
 
 static void *simulation_async_sender(void *arg) {
   auto client = static_cast<Client *>(arg);
-  uint64_t offset = 0;
   uint64_t size = 4096;
   while (!brpc::IsAskedToQuit()) {
+    if (client->GetIOPS() > 5000) continue;
+    uint64_t offset = client->GetSimulateOffset();
+    client->RecordTraffic(1, size);
     auto rc = client->AsyncWriteRequest(offset, size, client->WithAttachment());
+    CHECK(rc == Success);
+  }
+  return nullptr;
+}
+
+static void *simulation_sender(void *arg) {
+  auto client = static_cast<Client *>(arg);
+  uint64_t size = 4096;
+  while (!brpc::IsAskedToQuit()) {
+    if (client->GetIOPS() > 5000) continue;
+    uint64_t offset = client->GetSimulateOffset();
+    client->RecordTraffic(1, size);
+    auto rc = client->WriteRequest(offset, size, client->WithAttachment());
     CHECK(rc == Success);
   }
   return nullptr;
@@ -20,7 +35,7 @@ static void *simulation_async_sender(void *arg) {
 static void *stat_printer(void *arg) {
   auto client = static_cast<Client *>(arg);
   while (!brpc::IsAskedToQuit()) {
-    // client->ShowStat();
+    client->ShowStat();
     sleep(1);
   }
   return nullptr;
@@ -40,6 +55,11 @@ ReturnCode Client::Init(const ClientOption &option) {
 
   if (bthread_sem_init(&async_sem_, write_depth_)) {
     LOG(ERROR) << "Fail to initialize async semaphore";
+    return InitError;
+  }
+
+  if (bthread_mutex_init(&simulate_offset_mutex_, nullptr)) {
+    LOG(ERROR) << "Fail to initialize offset mutex";
     return InitError;
   }
 
@@ -119,16 +139,16 @@ ReturnCode Client::WriteRequest(const uint64_t offset, const uint64_t size,
 ReturnCode Client::AsyncWriteRequest(const uint64_t offset, const uint64_t size,
                                      const bool with_attachment) {
   CHECK(IsInit());
-  WriteIORequest request;
+  WriteIORequest *request = new WriteIORequest();
   brpc::Controller *cntl = new brpc::Controller();
   WriteIOResponse *response = new WriteIOResponse();
 
   cntl->set_log_id(log_id_++);
-  request.set_uid(id_);
+  request->set_uid(id_);
   // TODO(xgj): check if offset and size are out of bound
-  request.set_offset(offset);
-  request.set_size(size);
-  request.set_with_attachment(with_attachment);
+  request->set_offset(offset);
+  request->set_size(size);
+  request->set_with_attachment(with_attachment);
 
   if (with_attachment) {
     // attach size bytes of data to the request
@@ -136,7 +156,7 @@ ReturnCode Client::AsyncWriteRequest(const uint64_t offset, const uint64_t size,
     cntl->request_attachment().append(user_data_, size);
   } else {
     CHECK_LE(size, MAX_USER_DATA_SIZE);
-    request.set_data(user_data_, size);
+    request->set_data(user_data_, size);
   }
 
   bthread_sem_wait(&async_sem_);
@@ -146,13 +166,14 @@ ReturnCode Client::AsyncWriteRequest(const uint64_t offset, const uint64_t size,
   stat_->inflight_request << 1;
 
   stub_->AsyncWrite(
-      cntl, &request, response,
-      brpc::NewCallback(this, &Client::AsyncWriteDone, cntl, response));
+      cntl, request, response,
+      brpc::NewCallback(this, &Client::AsyncWriteDone, cntl, request, response));
   return Success;
 }
 
-void Client::AsyncWriteDone(brpc::Controller *cntl, WriteIOResponse *response) {
+void Client::AsyncWriteDone(brpc::Controller *cntl, WriteIORequest *repuest, WriteIOResponse *response) {
   std::unique_ptr<brpc::Controller> cntl_guard(cntl);
+  std::unique_ptr<WriteIORequest> request_guard(repuest);
   std::unique_ptr<WriteIOResponse> response_guard(response);
 
   bthread_sem_post(&async_sem_);
@@ -160,8 +181,10 @@ void Client::AsyncWriteDone(brpc::Controller *cntl, WriteIOResponse *response) {
 
   if (cntl->Failed()) {
     stat_->error_request << 1;
-    LOG(ERROR) << "User" << id_ << "Fail to send request" << cntl->log_id()
-               << "due to" << cntl->ErrorText();
+    // LOG(ERROR) << "User" << id_ << " Request failed " << cntl->log_id()
+    //            << "due to" << cntl->ErrorText();
+    // LOG(ERROR) << "Request info: " << request_guard->uid() << " "
+    //            << request_guard->offset() << " " << request_guard->size();
     return;
   }
 
@@ -220,9 +243,6 @@ void Client::Replay(const bool is_async, const bool is_simulation) {
 
 void Client::Stop() {
   brpc::AskToQuit();
-  while (!brpc::IsAskedToQuit()) {
-    usleep(100);
-  }
   if (stub_ != nullptr) {
     delete stub_;
   }
@@ -244,6 +264,22 @@ Client::~Client() {
 void Client::ShowStat() {
   CHECK(IsInit());
   LOG(INFO) << "User" << id_;
+  LOG(INFO) << "Now Simulate Offset: " << GetSimulateOffset();
   stat_->ShowStat();
+}
+
+uint64_t Client::GetSimulateOffset() {
+  bthread_mutex_lock(&simulate_offset_mutex_);
+  auto off = simulate_offset_;
+  bthread_mutex_unlock(&simulate_offset_mutex_);
+  return off;
+}
+
+void Client::RecordTraffic(const uint64_t reqcnt, const uint64_t size) {
+  bthread_mutex_lock(&simulate_offset_mutex_);
+  simulate_offset_ += size;
+  bthread_mutex_unlock(&simulate_offset_mutex_);
+
+  
 }
 }  // namespace mcbs
